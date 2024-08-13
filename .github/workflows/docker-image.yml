@@ -28,8 +28,11 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Build and Push the Image
       uses: docker/build-push-action@v6
+      env:
+        DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+        IMAGE_TAG: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref_name }}
       with:
         context: ./1.20.0
         platforms: linux/amd64
         push: ${{ startsWith(github.ref, 'refs/tags/') }}
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/unbound-docker:${{ github.ref_name }}
+        tags: ${{ env.DOCKER_NAMESPACE }}/unbound-docker:${{ env.IMAGE_TAG }}
