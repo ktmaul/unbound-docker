@@ -14,6 +14,7 @@ on:
 
 env:
   IMAGE_REPO: ${{ secrets.DOCKERHUB_USERNAME }}/unbound-docker
+  PUSH_IMAGE: ${{ startsWith(github.ref, 'refs/tags/') }}
   UNBOUND_VERSION: ${{ github.event_name == 'release' && github.ref_name || '1.20.0' }}
 
 jobs:
@@ -41,7 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MATRIX_TAG: ${{ format('{0}-{1}', matrix.release, matrix.platform) }}
-      PUSH_IMAGE: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up QEMU
@@ -83,7 +83,7 @@ jobs:
           ${{ format('{0}:{1}', env.IMAGE_REPO, env.MATRIX_TAG) }}
     - name: Parse Version
       id: version
-      if: ${{ env.PUSH_IMAGE }}
+      if: ${{ fromJson(env.PUSH_IMAGE) }}
       run: |
         regex='([0-9]+)(\.([0-9]+))?(\.([0-9]+))?(-([0-9A-Za-z\-\.]+))?'
         if [[ "${{ env.UNBOUND_VERSION }}" =~ $regex ]]; then
@@ -93,7 +93,7 @@ jobs:
           echo "prerelease=${BASH_REMATCH[7]}" >> "$GITHUB_OUTPUT"
         fi
     - name: Add to Manifest
-      if: ${{ env.PUSH_IMAGE }}
+      if: ${{ fromJson(env.PUSH_IMAGE) }}
       env:
         TAG_ARGS: >-
           --tag ${{ format('{0}:{1}.{2}-{3}', env.IMAGE_REPO, steps.version.outputs.major, steps.version.outputs.minor, matrix.release) }}
@@ -102,7 +102,7 @@ jobs:
         docker buildx imagetools create --append ${{ format('{0}:{1}', env.IMAGE_REPO, env.MATRIX_TAG) }} ${{ env.TAG_ARGS }} || \
         docker buildx imagetools create ${{ format('{0}:{1}', env.IMAGE_REPO, env.MATRIX_TAG) }} ${{ env.TAG_ARGS }}
     - name: Add Primary to Manifest
-      if: ${{ env.PUSH_IMAGE && matrix.is_primary }}
+      if: ${{ fromJson(env.PUSH_IMAGE) && matrix.is_primary }}
       env:
         TAG_ARGS: >-
           --tag ${{ format('{0}:{1}.{2}', env.IMAGE_REPO, steps.version.outputs.major, steps.version.outputs.minor) }}
@@ -111,7 +111,7 @@ jobs:
         docker buildx imagetools create --append ${{ format('{0}:{1}', env.IMAGE_REPO, env.MATRIX_TAG) }} ${{ env.TAG_ARGS }} || \
         docker buildx imagetools create ${{ format('{0}:{1}', env.IMAGE_REPO, env.MATRIX_TAG) }} ${{ env.TAG_ARGS }}
     - name: Cleanup Tags
-      if: ${{ env.PUSH_IMAGE }}
+      if: ${{ fromJson(env.PUSH_IMAGE) }}
       run: |
         token=$(curl -X POST -d "{ \"username\": \"${{ secrets.DOCKERHUB_USERNAME }}\", \"password\": \"${{ secrets.DOCKERHUB_TOKEN }}\" }" https://hub.docker.com/v2/users/login | jq -r '.token')
         curl -X DELETE -H "Authorization: Bearer $token" https://hub.docker.com/v2/repositories/${{ secrets.DOCKERHUB_USERNAME }}/unbound-docker/tags/${{ env.MATRIX_TAG }}
