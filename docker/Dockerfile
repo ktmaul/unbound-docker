@@ -1,6 +1,3 @@
-# TODO: Convert environment variables to ARG to handle version back to 1.17.1
-# TODO: Handle the case of multiple GPG keys vs 1 (handles all images back to 1.15.0)
-# TODO: Figure out how to handle package differences and key servers (handles images back to 1.9.1)
 ARG OS_RELEASE
 FROM debian:${OS_RELEASE} AS openssl
 LABEL maintainer="Matthew Vance"
